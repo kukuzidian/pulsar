@@ -26,24 +26,23 @@ ADD ${PULSAR_TARBALL} /
 RUN mv /apache-pulsar-* /pulsar
 
 COPY scripts/apply-config-from-env.py /pulsar/bin
+COPY scripts/apply-config-from-env-with-prefix.py /pulsar/bin
 COPY scripts/gen-yml-from-env.py /pulsar/bin
 COPY scripts/generate-zookeeper-config.sh /pulsar/bin
 COPY scripts/pulsar-zookeeper-ruok.sh /pulsar/bin
 COPY scripts/watch-znode.py /pulsar/bin
-COPY scripts/set_python_version.sh /pulsar/bin
-COPY scripts/install-pulsar-client-27.sh /pulsar/bin
 COPY scripts/install-pulsar-client-37.sh /pulsar/bin
 
+RUN mkdir /pulsar/data
 
 ### Create 2nd stage from OpenJDK image
 ### and add Python dependencies (for Pulsar functions)
 
-FROM openjdk:8-jdk-slim
+FROM openjdk:11-jdk-slim
 
 # Install some utilities
 RUN apt-get update \
      && apt-get install -y netcat dnsutils less procps iputils-ping \
-                 python2.7 python2.7-dev python-setuptools python-yaml python-kazoo \
                  python3.7 python3.7-dev python3-setuptools python3-yaml python3-kazoo \
                  libreadline-gplv2-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev \
                  curl \
@@ -51,16 +50,12 @@ RUN apt-get update \
      && rm -rf /var/lib/apt/lists/*
 
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python2.7 get-pip.py
 RUN python3.7 get-pip.py
 
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+
+RUN echo networkaddress.cache.ttl=1 >> $JAVA_HOME/conf/security/java.security
 ADD target/python-client/ /pulsar/pulsar-client
-ADD target/cpp-client/ /pulsar/cpp-client
-RUN echo networkaddress.cache.ttl=1 >> $JAVA_HOME/jre/lib/security/java.security
-RUN apt-get update \
-     && apt install -y /pulsar/cpp-client/*.deb \
-     && apt-get clean \
-     && rm -rf /var/lib/apt/lists/*
 
 VOLUME  ["/pulsar/conf", "/pulsar/data"]
 
@@ -70,6 +65,5 @@ ENV PULSAR_ROOT_LOGGER=INFO,CONSOLE
 COPY --from=pulsar /pulsar /pulsar
 WORKDIR /pulsar
 
-RUN /pulsar/bin/install-pulsar-client-27.sh
 RUN /pulsar/bin/install-pulsar-client-37.sh
 

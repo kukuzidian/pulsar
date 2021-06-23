@@ -35,6 +35,7 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.ssl.SslContext;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
+
 import org.apache.pulsar.PulsarVersion;
 import org.apache.pulsar.client.api.Authentication;
 import org.apache.pulsar.client.api.AuthenticationDataProvider;
@@ -58,8 +59,8 @@ import org.asynchttpclient.netty.ssl.JsseSslEngineFactory;
 @Slf4j
 public class HttpClient implements Closeable {
 
-    protected final static int DEFAULT_CONNECT_TIMEOUT_IN_SECONDS = 10;
-    protected final static int DEFAULT_READ_TIMEOUT_IN_SECONDS = 30;
+    protected static final int DEFAULT_CONNECT_TIMEOUT_IN_SECONDS = 10;
+    protected static final int DEFAULT_READ_TIMEOUT_IN_SECONDS = 30;
 
     protected final AsyncHttpClient httpClient;
     protected final ServiceNameResolver serviceNameResolver;
@@ -112,11 +113,13 @@ public class HttpClient implements Closeable {
                 } else {
                     SslContext sslCtx = null;
                     if (authData.hasDataForTls()) {
-                        sslCtx = SecurityUtility.createNettySslContextForClient(
-                                conf.isTlsAllowInsecureConnection(),
-                                conf.getTlsTrustCertsFilePath(),
-                                authData.getTlsCertificates(),
-                                authData.getTlsPrivateKey());
+                        sslCtx = authData.getTlsTrustStoreStream() == null
+                                ? SecurityUtility.createNettySslContextForClient(conf.isTlsAllowInsecureConnection(),
+                                        conf.getTlsTrustCertsFilePath(), authData.getTlsCertificates(),
+                                        authData.getTlsPrivateKey())
+                                : SecurityUtility.createNettySslContextForClient(conf.isTlsAllowInsecureConnection(),
+                                        authData.getTlsTrustStoreStream(), authData.getTlsCertificates(),
+                                        authData.getTlsPrivateKey());
                     }
                     else {
                         sslCtx = SecurityUtility.createNettySslContextForClient(

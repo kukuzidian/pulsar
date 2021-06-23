@@ -42,6 +42,7 @@ import org.apache.pulsar.functions.runtime.RuntimeUtils;
 import org.apache.pulsar.functions.secretsproviderconfigurator.SecretsProviderConfigurator;
 import org.apache.pulsar.functions.utils.FunctionCommon;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -90,10 +91,11 @@ class ProcessRuntime implements Runtime {
                    String stateStorageServiceUrl,
                    AuthenticationConfig authConfig,
                    SecretsProviderConfigurator secretsProviderConfigurator,
-                   Long expectedHealthCheckInterval) throws Exception {
+                   Long expectedHealthCheckInterval,
+                   String pulsarWebServiceUrl) throws Exception {
         this.instanceConfig = instanceConfig;
         this.instancePort = instanceConfig.getPort();
-        this.metricsPort = FunctionCommon.findAvailablePort();
+        this.metricsPort = instanceConfig.getMetricsPort();
         this.expectedHealthCheckInterval = expectedHealthCheckInterval;
         this.secretsProviderConfigurator = secretsProviderConfigurator;
         this.funcLogDir = RuntimeUtils.genFunctionLogFolder(logDirectory, instanceConfig);
@@ -105,7 +107,16 @@ class ProcessRuntime implements Runtime {
         }
         switch (instanceConfig.getFunctionDetails().getRuntime()) {
             case JAVA:
-                logConfigFile = "java_instance_log4j2.xml";
+                String logConfigPath = System.getProperty("pulsar.functions.log.conf");
+                if(log.isDebugEnabled()){
+                    log.debug("The loaded value of pulsar.functions.log.conf is {}", logConfigPath);
+                }
+                // Added null check to prevent test failures
+                if(logConfigPath != null && Files.exists(Paths.get(logConfigPath))){
+                    logConfigFile = logConfigPath;
+                } else { // Keeping existing file for backwards compatibility
+                    logConfigFile = "java_instance_log4j2.xml";
+                }
                 break;
             case PYTHON:
                 logConfigFile = System.getenv("PULSAR_HOME") + "/conf/functions-logging/logging_config.ini";
@@ -136,7 +147,9 @@ class ProcessRuntime implements Runtime {
             false,
             null,
             null,
-                this.metricsPort, narExtractionDirectory);
+                narExtractionDirectory,
+                null,
+                pulsarWebServiceUrl);
     }
 
     /**
@@ -163,7 +176,7 @@ class ProcessRuntime implements Runtime {
         startProcess();
         if (channel == null && stub == null) {
             channel = ManagedChannelBuilder.forAddress("127.0.0.1", instancePort)
-                    .usePlaintext(true)
+                    .usePlaintext()
                     .build();
             stub = InstanceControlGrpc.newFutureStub(channel);
 

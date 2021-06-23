@@ -86,7 +86,7 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<Object> 
             ByteBuf content = httpContent.content();
             if (content.isReadable()) {
                 nettySource.consume(new NettyHttpRecord(Optional.ofNullable(""),
-                        content.toString(CharsetUtil.UTF_8).getBytes()));
+                        content.toString(CharsetUtil.UTF_8).getBytes(CharsetUtil.UTF_8)));
             }
 
             if (msg instanceof LastHttpContent) {
@@ -137,7 +137,7 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<Object> 
     }
 
     @Data
-    static private class NettyHttpRecord implements Record<byte[]>, Serializable {
+    private static class NettyHttpRecord implements Record<byte[]>, Serializable {
         private final Optional<String> key;
         private final byte[] value;
     }

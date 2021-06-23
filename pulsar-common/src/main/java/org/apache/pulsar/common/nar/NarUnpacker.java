@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -45,7 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NarUnpacker {
 
-    private final static String HASH_FILENAME = "nar-md5sum";
+    private static final String HASH_FILENAME = "nar-md5sum";
 
     /**
      * Unpacks the specified nar into the specified base working directory.

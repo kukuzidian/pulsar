@@ -20,12 +20,9 @@ package org.apache.pulsar.broker.admin;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
-
 import com.google.common.collect.Lists;
-
 import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.core.Response.Status;
-
 import org.apache.pulsar.client.admin.PulsarAdminException.ConflictException;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
@@ -35,6 +32,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+@Test(groups = "broker")
 public class CreateSubscriptionTest extends ProducerConsumerBase {
 
     @BeforeMethod
@@ -44,7 +42,7 @@ public class CreateSubscriptionTest extends ProducerConsumerBase {
         producerBaseSetup();
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     @Override
     public void cleanup() throws Exception {
         super.internalCleanup();
@@ -71,16 +69,16 @@ public class CreateSubscriptionTest extends ProducerConsumerBase {
         p1.send("test-2".getBytes());
         MessageId m3 = p1.send("test-3".getBytes());
 
-        assertEquals(admin.topics().getStats(topic).subscriptions.get("sub-1").msgBacklog, 3);
+        assertEquals(admin.topics().getStats(topic).getSubscriptions().get("sub-1").getMsgBacklog(), 3);
 
         admin.topics().createSubscription(topic, "sub-2", MessageId.latest);
-        assertEquals(admin.topics().getStats(topic).subscriptions.get("sub-2").msgBacklog, 0);
+        assertEquals(admin.topics().getStats(topic).getSubscriptions().get("sub-2").getMsgBacklog(), 0);
 
         admin.topics().createSubscription(topic, "sub-3", MessageId.earliest);
-        assertEquals(admin.topics().getStats(topic).subscriptions.get("sub-3").msgBacklog, 3);
+        assertEquals(admin.topics().getStats(topic).getSubscriptions().get("sub-3").getMsgBacklog(), 3);
 
         admin.topics().createSubscription(topic, "sub-5", m3);
-        assertEquals(admin.topics().getStats(topic).subscriptions.get("sub-5").msgBacklog, 1);
+        assertEquals(admin.topics().getStats(topic).getSubscriptions().get("sub-5").getMsgBacklog(), 1);
     }
 
     @Test
@@ -103,12 +101,12 @@ public class CreateSubscriptionTest extends ProducerConsumerBase {
                     Lists.newArrayList("sub-1"));
         }
     }
-    
+
     @Test
     public void createSubscriptionOnPartitionedTopicWithPartialFailure() throws Exception {
         String topic = "persistent://my-property/my-ns/my-partitioned-topic";
         admin.topics().createPartitionedTopic(topic, 10);
-        
+
         // create subscription for one partition
         final String partitionedTopic0 = topic+"-partition-0";
         admin.topics().createSubscription(partitionedTopic0, "sub-1", MessageId.latest);
